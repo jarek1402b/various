@@ -357,9 +357,6 @@ enum
   XATTR_OPTION,
   XATTR_EXCLUDE,
   XATTR_INCLUDE,
-  FAKETIME,
-  FAKETIME_ZERO,
-  FAKETIME_REFERENCE,
   SORT_INPUT
 };
 
@@ -842,15 +839,6 @@ static struct argp_option options[] = {
 #define GRID 150
   {NULL, 0, NULL, 0,
    N_("Other options:"), GRID },
-
-  {"faketime", FAKETIME, N_("STRING"), 0,
-   N_("pretend that files read from filesystem have the time (c/m/atime) as given as string e.g. 2008-12-24 23:59:59"), GRID+1 },
-
-  {"faketime-zero", FAKETIME_ZERO, 0, 0,
-   N_("pretend that files read from filesystem have the time (c/m/atime) as given as string e.g. 2008-12-24 23:59:59"), -1 },
-
-  {"faketime-reference", FAKETIME_REFERENCE, N_("STRING"), 0,
-   N_("pretend that files read from filesystem have the time (c/m/atime) same as mtime of this reference file (as touch --reference)"), GRID+1 },
 
   {"sort-input", SORT_INPUT, 0, 0,
    N_("pretend that files read from filesystem have the time (c/m/atime) same as mtime of this reference file (as touch --reference)"), -1 },
@@ -2078,62 +2066,6 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case WARNING_OPTION:
       set_warning_option (arg);
       break;
-
-	case FAKETIME:
-		{
-			const char* parse = arg;
-			if (!arg) { // double checking, should be verified by arg parsing
-				printf("Missing parameter!\n");
-				exit(1);
-			}
-			struct tm tm; 
-			memset (&tm, '\0', sizeof (tm));
-			const char* parsed_to = strptime(parse,"%Y-%m-%d %H:%M:%S", &tm);
-
-			if (!parsed_to) {
-		 		USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-				_("Unknown date format")));
-				break;
-			}
-			if ( (size_t)(parsed_to - parse) != strlen(parse)) {
-		 		USAGE_ERROR ((0, 0, "(length) %s: %s", quotearg_colon (arg),
-				_("Unknown date format")));
-				break;
-			}
-			args->faketime_use = true;
-			args->faketime_time.tv_sec = mktime (&tm);
-			args->faketime_time.tv_nsec = 0; // TODO support this option?
-			// printf("Will faketime: %d\n", args->faketime_time.tv_sec); // debug
-		}
-		break;
-
-	case FAKETIME_ZERO:
-		{
-			
-			args->faketime_use = true;
-			args->faketime_time.tv_sec = 0;
-			//printf ( "set up 0");
-			args->faketime_time.tv_nsec = 0; // TODO support this option?
-			 //printf("Will faketime: %d\n", args->faketime_time.tv_sec); // debug
-		}
-			
-			
-			break;
-			
-	case FAKETIME_REFERENCE:
-		{
-			struct stat att;
-			stat (arg ,&att);
-			struct tm* st; 
-			st = localtime (&(att.st_mtime));
-			args->faketime_use = true;
-			args->faketime_time.tv_sec = mktime(st);
-			args->faketime_time.tv_nsec = 0; // TODO support this option?
-			 //printf("Will faketime: %d\n", args->faketime_time.tv_sec); // debug
-		}
-			
-			
-			break;
 			
 	case SORT_INPUT:
 		{
@@ -2296,9 +2228,8 @@ decode_options (int argc, char **argv)
   args.version_control_string = 0;
   args.input_files = false;
   args.compress_autodetect = false;
-  args.faketime_use = false;
   args.sort_use = false;
-	// args.faketime_time
+
 
   subcommand_option = UNKNOWN_SUBCOMMAND;
   archive_format = DEFAULT_FORMAT;
